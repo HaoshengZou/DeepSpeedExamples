@@ -19,6 +19,8 @@ for prompt_batch in prompt_train_dataloader:
 import argparse
 import os
 import random
+import time
+
 import torch
 from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
@@ -435,6 +437,8 @@ def main():
     # Train!
     print_rank_0("***** Running training *****", args.global_rank)
 
+    start_time = time.time()
+    save_interval = 5 * 60
     for epoch in range(args.num_train_epochs):
         print_rank_0(
             f"Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Generation Batches {min(len(prompt_train_dataloader), len(unsupervised_train_dataloader))}",
@@ -521,6 +525,50 @@ def main():
             if args.actor_gradient_checkpointing:
                 rlhf_engine.actor.gradient_checkpointing_disable()
 
+            if time.time() - start_time >= save_interval:  # 每interval存一次model
+                if args.output_dir is not None:
+
+                    rlhf_engine.actor = convert_lora_to_linear_layer(rlhf_engine.actor)
+                    rlhf_engine.critic = convert_lora_to_linear_layer(rlhf_engine.critic)
+                    if args.enable_ema:
+                        rlhf_engine.actor_ema = convert_lora_to_linear_layer(
+                            rlhf_engine.actor_ema)
+
+                    if torch.distributed.get_rank() == 0:
+                        print_rank_0(f'saving model ... every {save_interval / 60 / 60}h')
+                        save_hf_format(rlhf_engine.actor,
+                                       tokenizer,
+                                       args,
+                                       sub_folder='actor')
+                        save_hf_format(rlhf_engine.critic,
+                                       tokenizer,
+                                       args,
+                                       sub_folder='critic')
+                        if args.enable_ema:
+                            save_hf_format(rlhf_engine.actor_ema,
+                                           tokenizer,
+                                           args,
+                                           sub_folder='actor_ema')
+
+                    if args.actor_zero_stage == 3:
+                        save_zero_three_model(rlhf_engine.actor,
+                                              global_rank=args.global_rank,
+                                              save_dir=os.path.join(
+                                                  args.output_dir, 'actor'),
+                                              zero_stage=args.actor_zero_stage)
+                        if args.enable_ema:
+                            save_zero_three_model(rlhf_engine.actor_ema,
+                                                  global_rank=args.global_rank,
+                                                  save_dir=os.path.join(
+                                                      args.output_dir, 'actor_ema'),
+                                                  zero_stage=args.actor_zero_stage)
+                    if args.critic_zero_stage == 3:
+                        save_zero_three_model(rlhf_engine.critic,
+                                              global_rank=args.global_rank,
+                                              save_dir=os.path.join(
+                                                  args.output_dir, 'critic'),
+                                              zero_stage=args.critic_zero_stage)
+
     if args.output_dir is not None:
         print_rank_0('saving model ...')
         rlhf_engine.actor = convert_lora_to_linear_layer(rlhf_engine.actor)
@@ -566,3 +614,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # DeepSpeed Team
+import datasets
 from datasets import load_dataset
 from torch.utils.data import Subset
 import re
@@ -16,7 +17,8 @@ class PromptRawDataset(object):
         self.seed = seed
         self.local_rank = local_rank
         if not dataset_name == 'local/jsonfile':
-            self.raw_datasets = load_dataset(dataset_name)
+            # self.raw_datasets = load_dataset(dataset_name)
+            self.raw_datasets = datasets.load_from_disk(dataset_name)
 
     def get_train_data(self):
         return

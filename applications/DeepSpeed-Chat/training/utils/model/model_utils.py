@@ -21,7 +21,7 @@ def create_hf_model(model_class,
                     ds_config=None,
                     rlhf_training=False,
                     disable_dropout=False):
-    model_config = AutoConfig.from_pretrained(model_name_or_path)
+    model_config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
     if disable_dropout:
         model_config.dropout = 0.0
     # Note: dschf is defined in function scope to avoid global effects
@@ -32,12 +32,13 @@ def create_hf_model(model_class,
         dschf = None
     if rlhf_training:
         # the weight loading is handled by create critic model
-        model = model_class.from_config(model_config)
+        model = model_class.from_config(model_config, trust_remote_code=True)
     else:
         model = model_class.from_pretrained(
             model_name_or_path,
             from_tf=bool(".ckpt" in model_name_or_path),
-            config=model_config)
+            config=model_config,
+            trust_remote_code=True)
 
     model.config.end_token_id = tokenizer.eos_token_id
     model.config.pad_token_id = model.config.eos_token_id
@@ -71,7 +72,9 @@ def create_critic_model(model_name_or_path,
         assert os.path.exists(
             model_ckpt_path
         ), f"Cannot find model checkpoint at {model_ckpt_path}"
-        critic_model.load_state_dict(
-            torch.load(model_ckpt_path, map_location='cpu'))
+        ret = critic_model.load_state_dict(
+            torch.load(model_ckpt_path, map_location='cpu'), strict=False)
+        print('load_reward_model returns:')
+        print(ret)
 
     return critic_model

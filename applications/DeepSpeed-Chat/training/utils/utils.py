@@ -54,7 +54,7 @@ def get_tokenizer(model_name_or_path, fast_tokenizer=True):
             tokenizer.padding_side = 'right'
     else:
         tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path, fast_tokenizer=fast_tokenizer)
+            model_name_or_path, fast_tokenizer=fast_tokenizer, trust_remote_code=True)
         tokenizer.pad_token = tokenizer.eos_token
         # make sure tokenizer is right pad in our logic
         tokenizer.padding_side = 'right'
@@ -90,9 +90,13 @@ def save_hf_format(model, tokenizer, args, sub_folder=""):
     for key in list(save_dict.keys()):
         if "lora" in key:
             del save_dict[key]
+    print('1' * 30)
     torch.save(save_dict, output_model_file)
+    print('2' * 30)
     model_to_save.config.to_json_file(output_config_file)
+    print('3' * 30)
     tokenizer.save_vocabulary(output_dir)
+    print('4' * 30)
 
 
 def set_random_seed(seed):
@@ -192,6 +196,7 @@ def save_zero_three_model(model_ema, global_rank, save_dir, zero_stage=0):
             torch.save(model_to_save.state_dict(), output_model_file)
     else:
         output_state_dict = {}
+        print('5' * 30)
         for k, v in model_to_save.named_parameters():
 
             if hasattr(v, 'ds_id'):
@@ -203,6 +208,7 @@ def save_zero_three_model(model_ema, global_rank, save_dir, zero_stage=0):
                 v_p = v.cpu()
             if global_rank == 0 and "lora" not in k:
                 output_state_dict[k] = v_p
+        print('6' * 30)
         if global_rank == 0:
             torch.save(output_state_dict, output_model_file)
         del output_state_dict

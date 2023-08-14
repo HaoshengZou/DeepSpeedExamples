@@ -23,15 +23,16 @@ Num_Padding_at_Beginning=1 # this is model related
 
 Actor_Lr=9.65e-6
 Critic_Lr=5e-6
+DS_BUILD_SPARSE_ATTN=0
 
-deepspeed --master_port 12346 main.py \
-   --data_path Dahoas/rm-static \
+deepspeed --master_port 12366 main.py \
+   --data_path /mnt/disk0/ljj/data/dahoas_rm_static \
    --data_split 2,4,4 \
-   --actor_model_name_or_path $ACTOR_MODEL_PATH \
-   --critic_model_name_or_path $CRITIC_MODEL_PATH \
+   --actor_model_name_or_path /mnt/disk0/ljj/DeepSpeedExamples/applications/DeepSpeed-Chat/output/actor-models/6.7b/ \
+   --critic_model_name_or_path /mnt/disk0/ljj/DeepSpeedExamples/applications/DeepSpeed-Chat/output/reward-models/350m/ \
    --num_padding_at_beginning 1 \
-   --per_device_train_batch_size 4 \
-   --per_device_mini_train_batch_size 4 \
+   --per_device_train_batch_size 2 \
+   --per_device_mini_train_batch_size 2 \
    --generation_batch_numbers 1 \
    --ppo_epochs 1 \
    --max_answer_seq_len 256 \
@@ -46,7 +47,7 @@ deepspeed --master_port 12346 main.py \
    --actor_gradient_checkpointing \
    --disable_actor_dropout \
    --num_warmup_steps 100 \
-   --deepspeed --seed 1234 \
+   --deepspeed --seed 0515 \
    --enable_hybrid_engine \
    --actor_zero_stage $ACTOR_ZERO_STAGE \
    --critic_zero_stage $CRITIC_ZERO_STAGE \
